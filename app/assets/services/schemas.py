@@ -26,7 +26,7 @@ class ReferenceData:
     created_at: datetime
     updated_at: datetime
     system_metadata: dict[str, Any] | None = None
-    prompt_id: str | None = None
+    job_id: str | None = None
     last_access_time: datetime | None = None
 
 
@@ -96,7 +96,7 @@ def extract_reference_data(ref: AssetReference) -> ReferenceData:
         user_metadata=ref.user_metadata,
         preview_id=ref.preview_id,
         system_metadata=ref.system_metadata,
-        prompt_id=ref.prompt_id,
+        job_id=ref.job_id,
         created_at=ref.created_at,
         updated_at=ref.updated_at,
         last_access_time=ref.last_access_time,

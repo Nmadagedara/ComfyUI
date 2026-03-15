@@ -1,8 +1,8 @@
 """
-Add system_metadata and prompt_id columns to asset_references.
+Add system_metadata and job_id columns to asset_references.
 Change preview_id FK from assets.id to asset_references.id.
 
-Revision ID: 0003_add_metadata_prompt
+Revision ID: 0003_add_metadata_job_id
 Revises: 0002_merge_to_asset_references
 Create Date: 2026-03-09
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from app.database.models import NAMING_CONVENTION
 
-revision = "0003_add_metadata_prompt"
+revision = "0003_add_metadata_job_id"
 down_revision = "0002_merge_to_asset_references"
 branch_labels = None
 depends_on = None
@@ -24,7 +24,7 @@ def upgrade() -> None:
             sa.Column("system_metadata", sa.JSON(), nullable=True)
         )
         batch_op.add_column(
-            sa.Column("prompt_id", sa.String(length=36), nullable=True)
+            sa.Column("job_id", sa.String(length=36), nullable=True)
         )
 
     # Change preview_id FK from assets.id to asset_references.id (self-ref).
@@ -62,5 +62,5 @@ def downgrade() -> None:
         )
 
     with op.batch_alter_table("asset_references") as batch_op:
-        batch_op.drop_column("prompt_id")
+        batch_op.drop_column("job_id")
         batch_op.drop_column("system_metadata")

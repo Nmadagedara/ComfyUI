@@ -16,7 +16,8 @@ class Asset(BaseModel):
     user_metadata: dict[str, Any] = Field(default_factory=dict)
     is_immutable: bool = False
     metadata: dict[str, Any] | None = None
-    prompt_id: str | None = None
+    job_id: str | None = None
+    prompt_id: str | None = None  # deprecated: use job_id
     created_at: datetime
     updated_at: datetime
     last_access_time: datetime | None = None

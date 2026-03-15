@@ -171,7 +171,8 @@ def _build_asset_response(result: schemas.AssetDetailResult | schemas.UploadResu
         preview_id=result.ref.preview_id,
         user_metadata=result.ref.user_metadata or {},
         metadata=result.ref.system_metadata,
-        prompt_id=result.ref.prompt_id,
+        job_id=result.ref.job_id,
+        prompt_id=result.ref.job_id,  # deprecated: mirrors job_id for cloud compat
         created_at=result.ref.created_at,
         updated_at=result.ref.updated_at,
         last_access_time=result.ref.last_access_time,

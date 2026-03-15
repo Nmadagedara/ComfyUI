@@ -93,7 +93,7 @@ class AssetReference(Base):
     system_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         JSON(none_as_null=True), nullable=True, default=None
     )
-    prompt_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), nullable=False, default=get_utc_now
     )
