@@ -318,6 +318,10 @@ def prompt_worker(q, server_instance):
             else:
                 logging.info("Prompt executed in {:.2f} seconds".format(execution_time))
 
+            if not asset_seeder.is_disabled():
+                paths = _collect_output_absolute_paths(e.history_result)
+                register_output_files(paths, job_id=prompt_id)
+
         flags = q.get_flags()
         free_memory = flags.get("free_memory", False)
 
@@ -341,9 +345,7 @@ def prompt_worker(q, server_instance):
                 hook_breaker_ac10a0.restore_functions()
 
                 if not asset_seeder.is_disabled():
-                    paths = _collect_output_absolute_paths(e.history_result)
-                    if register_output_files(paths, job_id=prompt_id) > 0:
-                        asset_seeder.enqueue_enrich(roots=("output",), compute_hashes=True)
+                    asset_seeder.enqueue_enrich(roots=("output",), compute_hashes=True)
                 asset_seeder.resume()
 
 
