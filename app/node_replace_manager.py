@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import logging
+import os
+
 from aiohttp import web
 
 from typing import TYPE_CHECKING, TypedDict
@@ -7,7 +11,6 @@ if TYPE_CHECKING:
     from comfy_api.latest._io_public import NodeReplace
 
 from comfy_execution.graph_utils import is_link
-import nodes
 
 class NodeStruct(TypedDict):
     inputs: dict[str, str | int | float | bool | tuple[str, int]]
@@ -43,6 +46,7 @@ class NodeReplaceManager:
         return old_node_id in self._replacements
 
     def apply_replacements(self, prompt: dict[str, NodeStruct]):
+        import nodes
         connections: dict[str, list[tuple[str, str, int]]] = {}
         need_replacement: set[str] = set()
         for node_number, node_struct in prompt.items():
@@ -93,6 +97,60 @@ class NodeReplaceManager:
                                 new_output_idx = output_map["new_idx"]
                                 previous_input = prompt[conn_node_number]["inputs"][conn_input_id]
                                 previous_input[1] = new_output_idx
+
+    def load_from_json(self, module_dir: str, module_name: str, _node_replace_class=None):
+        """Load node_replacements.json from a custom node directory and register replacements.
+
+        Custom node authors can ship a node_replacements.json file in their repo root
+        to define node replacements declaratively. The file format matches the output
+        of NodeReplace.as_dict(), keyed by old_node_id.
+
+        Fail-open: all errors are logged and skipped so a malformed file never
+        prevents the custom node from loading.
+        """
+        replacements_path = os.path.join(module_dir, "node_replacements.json")
+        if not os.path.isfile(replacements_path):
+            return
+
+        try:
+            with open(replacements_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            if not isinstance(data, dict):
+                logging.warning(f"node_replacements.json in {module_name} must be a JSON object, skipping.")
+                return
+
+            if _node_replace_class is None:
+                from comfy_api.latest._io import NodeReplace
+                _node_replace_class = NodeReplace
+
+            count = 0
+            for old_node_id, replacements in data.items():
+                if not isinstance(replacements, list):
+                    logging.warning(f"node_replacements.json in {module_name}: value for '{old_node_id}' must be a list, skipping.")
+                    continue
+                for entry in replacements:
+                    if not isinstance(entry, dict):
+                        continue
+                    new_node_id = entry.get("new_node_id", "")
+                    if not new_node_id:
+                        logging.warning(f"node_replacements.json in {module_name}: entry for '{old_node_id}' missing 'new_node_id', skipping.")
+                        continue
+                    self.register(_node_replace_class(
+                        new_node_id=new_node_id,
+                        old_node_id=entry.get("old_node_id", old_node_id),
+                        old_widget_ids=entry.get("old_widget_ids"),
+                        input_mapping=entry.get("input_mapping"),
+                        output_mapping=entry.get("output_mapping"),
+                    ))
+                    count += 1
+
+            if count > 0:
+                logging.info(f"Loaded {count} node replacement(s) from {module_name}/node_replacements.json")
+        except json.JSONDecodeError as e:
+            logging.warning(f"Failed to parse node_replacements.json in {module_name}: {e}")
+        except Exception as e:
+            logging.warning(f"Failed to load node_replacements.json from {module_name}: {e}")
 
     def as_dict(self):
         """Serialize all replacements to dict."""
