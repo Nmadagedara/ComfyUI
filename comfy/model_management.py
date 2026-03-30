@@ -780,16 +780,19 @@ def load_models_gpu(models, memory_required=0, force_patch_weights=False, minimu
         if loaded_model_index is not None:
             loaded = current_loaded_models[loaded_model_index]
             loaded.currently_used = True
+            logging.info(f"[MULTIGPU_DBG] Reusing LoadedModel for {x.model.__class__.__name__}: LoadedModel.device={loaded.device}, model.load_device={loaded.model.load_device}, is_multigpu={getattr(loaded.model, 'is_multigpu_base_clone', False)}, id(patcher)={id(loaded.model)}, id(inner)={id(loaded.model.model)}")
             models_to_load.append(loaded)
         else:
             if hasattr(x, "model"):
                 logging.info(f"Requested to load {x.model.__class__.__name__}")
+                logging.info(f"[MULTIGPU_DBG] New LoadedModel for {x.model.__class__.__name__}: LoadedModel.device={loaded_model.device}, model.load_device={x.load_device}, is_multigpu={getattr(x, 'is_multigpu_base_clone', False)}, id(patcher)={id(x)}, id(inner)={id(x.model)}")
             models_to_load.append(loaded_model)
 
     for loaded_model in models_to_load:
         to_unload = []
         for i in range(len(current_loaded_models)):
             if loaded_model.model.is_clone(current_loaded_models[i].model):
+                logging.info(f"[MULTIGPU_DBG] is_clone match: unloading idx={i}, LoadedModel.device={current_loaded_models[i].device}, model.load_device={current_loaded_models[i].model.load_device}, id(inner)={id(current_loaded_models[i].model.model)}")
                 to_unload = [i] + to_unload
         for i in to_unload:
             model_to_unload = current_loaded_models.pop(i)
