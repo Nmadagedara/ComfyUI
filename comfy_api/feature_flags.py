@@ -5,18 +5,77 @@ This module handles capability negotiation between frontend and backend,
 allowing graceful protocol evolution while maintaining backward compatibility.
 """
 
-from typing import Any
+from typing import Any, TypedDict
 
 from comfy.cli_args import args
 
+
+class FeatureFlagInfo(TypedDict):
+    type: str
+    default: Any
+    description: str
+
+
+# Registry of known CLI-settable feature flags.
+# Launchers can query this via --list-feature-flags to discover valid flags.
+CLI_FEATURE_FLAG_REGISTRY: dict[str, FeatureFlagInfo] = {
+    "show_signin_button": {
+        "type": "bool",
+        "default": False,
+        "description": "Show the sign-in button in the frontend even when not signed in",
+    },
+}
+
+
+def get_cli_feature_flag_registry() -> dict[str, FeatureFlagInfo]:
+    """Return the registry of known CLI-settable feature flags."""
+    return {k: dict(v) for k, v in CLI_FEATURE_FLAG_REGISTRY.items()}
+
+
+_COERCE_FNS: dict[str, Any] = {
+    "bool": lambda v: v.lower() == "true",
+    "int": lambda v: int(v),
+    "float": lambda v: float(v),
+}
+
+
+def _coerce_flag_value(key: str, raw_value: str) -> Any:
+    """Coerce a raw string value using the registry type, or keep as string."""
+    info = CLI_FEATURE_FLAG_REGISTRY.get(key)
+    if info is None:
+        return raw_value
+    coerce = _COERCE_FNS.get(info["type"])
+    if coerce is None:
+        return raw_value
+    return coerce(raw_value)
+
+
+def _parse_cli_feature_flags() -> dict[str, Any]:
+    """Parse --feature-flag key=value pairs from CLI args into a dict."""
+    result: dict[str, Any] = {}
+    for item in getattr(args, "feature_flag", []):
+        if "=" not in item:
+            continue
+        key, _, raw_value = item.partition("=")
+        key = key.strip()
+        if key:
+            result[key] = _coerce_flag_value(key, raw_value.strip())
+    return result
+
+
 # Default server capabilities
-SERVER_FEATURE_FLAGS: dict[str, Any] = {
+_CORE_FEATURE_FLAGS: dict[str, Any] = {
     "supports_preview_metadata": True,
     "max_upload_size": args.max_upload_size * 1024 * 1024, # Convert MB to bytes
     "extension": {"manager": {"supports_v4": True}},
     "node_replacements": True,
     "assets": args.enable_assets,
 }
+
+# CLI-provided flags cannot overwrite core flags
+_cli_flags = {k: v for k, v in _parse_cli_feature_flags().items() if k not in _CORE_FEATURE_FLAGS}
+
+SERVER_FEATURE_FLAGS: dict[str, Any] = {**_CORE_FEATURE_FLAGS, **_cli_flags}
 
 
 def get_connection_feature(

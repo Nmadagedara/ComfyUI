@@ -1,13 +1,21 @@
 import comfy.options
 comfy.options.enable_args_parsing()
 
+from comfy.cli_args import args
+
+if args.list_feature_flags:
+    import json
+    from comfy_api.feature_flags import get_cli_feature_flag_registry
+    print(json.dumps(get_cli_feature_flag_registry(), indent=2))  # noqa: T201
+    raise SystemExit(0)
+
 import os
 import importlib.util
 import shutil
 import importlib.metadata
 import folder_paths
 import time
-from comfy.cli_args import args, enables_dynamic_vram
+from comfy.cli_args import enables_dynamic_vram
 from app.logger import setup_logger
 from app.assets.seeder import asset_seeder
 from app.assets.services import register_output_files

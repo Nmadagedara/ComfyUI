@@ -4,7 +4,10 @@ from comfy_api.feature_flags import (
     get_connection_feature,
     supports_feature,
     get_server_features,
+    get_cli_feature_flag_registry,
     SERVER_FEATURE_FLAGS,
+    _coerce_flag_value,
+    _parse_cli_feature_flags,
 )
 
 
@@ -96,3 +99,43 @@ class TestFeatureFlags:
         result = get_connection_feature(sockets_metadata, "sid1", "any_feature")
         assert result is False
         assert supports_feature(sockets_metadata, "sid1", "any_feature") is False
+
+
+class TestCoerceFlagValue:
+    """Test suite for _coerce_flag_value."""
+
+    def test_registered_bool_true(self):
+        assert _coerce_flag_value("show_signin_button", "true") is True
+        assert _coerce_flag_value("show_signin_button", "True") is True
+
+    def test_registered_bool_false(self):
+        assert _coerce_flag_value("show_signin_button", "false") is False
+        assert _coerce_flag_value("show_signin_button", "FALSE") is False
+
+    def test_unregistered_key_stays_string(self):
+        assert _coerce_flag_value("unknown_flag", "true") == "true"
+        assert _coerce_flag_value("unknown_flag", "42") == "42"
+
+
+class TestParseCliFeatureFlags:
+    """Test suite for _parse_cli_feature_flags."""
+
+    def test_single_flag(self, monkeypatch):
+        monkeypatch.setattr("comfy_api.feature_flags.args", type("Args", (), {"feature_flag": ["show_signin_button=true"]})())
+        result = _parse_cli_feature_flags()
+        assert result == {"show_signin_button": True}
+
+    def test_missing_equals_skipped(self, monkeypatch):
+        monkeypatch.setattr("comfy_api.feature_flags.args", type("Args", (), {"feature_flag": ["noequals", "valid=1"]})())
+        result = _parse_cli_feature_flags()
+        assert result == {"valid": "1"}
+
+
+class TestCliFeatureFlagRegistry:
+    """Test suite for the CLI feature flag registry."""
+
+    def test_registry_entries_have_required_fields(self):
+        for key, info in get_cli_feature_flag_registry().items():
+            assert "type" in info, f"{key} missing 'type'"
+            assert "default" in info, f"{key} missing 'default'"
+            assert "description" in info, f"{key} missing 'description'"
