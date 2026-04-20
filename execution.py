@@ -994,7 +994,12 @@ async def validate_inputs(prompt_id, prompt, item, validated):
                         combo_options = extra_info.get("options", [])
                     else:
                         combo_options = input_type
-                    if val not in combo_options:
+                    # MultiCombo sends a list of selected values
+                    if isinstance(val, list):
+                        invalid_vals = [v for v in val if v not in combo_options]
+                    else:
+                        invalid_vals = [val] if val not in combo_options else []
+                    if invalid_vals:
                         input_config = info
                         list_info = ""
 
@@ -1009,7 +1014,7 @@ async def validate_inputs(prompt_id, prompt, item, validated):
                         error = {
                             "type": "value_not_in_list",
                             "message": "Value not in list",
-                            "details": f"{x}: '{val}' not in {list_info}",
+                            "details": f"{x}: '{invalid_vals}' not in {list_info}",
                             "extra_info": {
                                 "input_name": x,
                                 "input_config": input_config,
